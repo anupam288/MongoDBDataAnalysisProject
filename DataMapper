@@ -1,0 +1,222 @@
+var mongoDBClient =  require('mongodb').MongoClient;
+var assert = require('assert');
+
+var url = 'mongodb://localhost:27017/users';
+
+
+var tableName = process.argv[2];
+
+//console.log('Table Name : ' + tableName );
+
+assert.notEqual(null,tableName);
+
+mongoDBClient.connect(url, function(err, db) {
+
+	assert.equal(null, err);
+   
+	var cursor = db.collection(tableName).find().limit(150000);
+	
+	console.log('STATUS,STARFIN ACCOUNT NO,STARFIN ACCOUNT DETAILS,SF ACCOUNT DETAILS' );
+	
+	findStarfinAccountNo(db,cursor);
+	
+	cursor = db.collection(tableName).find().skip(150000);
+	
+	findStarfinAccountNo(db,cursor);
+
+	findDuplicatesInStarfin(db);
+	
+
+});
+
+var findStarfinAccountNo = function(db,cursor) {
+  
+   cursor.toArray(function (err, result)  
+   {  		
+		assert.equal(err, null);
+
+		if (err)
+		{
+			console.log(err);
+		} 
+		else if (result.length) 
+		{
+			//findAccountsInStarfindAcctNameMatch(db,result);      	
+			//findAccountsInStarfindAcctBillingAddrMatch(db,result);
+			findAccountsInStarfindBillingAddrMatch(db,result);
+		}
+		else 
+		{
+			console.log('No document(s) found with defined "find" criteria!');
+		}
+	  
+   });
+};
+
+var searchInSalesforce = function (accountName,billingStreet,city,state,zip,starFinNo,cursor)
+{
+	cursor.toArray(function (err, result) 
+	{
+		if (err) 
+		{
+			console.log(err);
+		} 
+		else if (result.length) 
+		{
+			if(result.length > 1)
+			{
+				var accountIDs = new Array();
+				var sfAccountNames = new Array();
+				var sfAccountAddresses = new Array();
+							
+				for(var j = 0 ; j < result.length; j++)
+				{
+					accountIDs.push(result[j]['Account ID']);
+					sfAccountNames.push(result[j]['Account Name']);
+				}	
+							
+				var logString = 'MULTIPLE FOUND,"' + starFinNo  + '","' + accountName +  ',' + billingStreet + ',' + city + ',' + state + ',' + zip;
+
+				for(var j = 0 ; j < result.length; j++)
+				{
+					logString += '","' + result[j]['Account ID'] + ',' + result[j]['StarFin Account Number']  + ',' +result[j]['Account Name'] + ',' + result[j]['Billing Street'] + ',' + result[j]['Billing City'] + ',' + result[j]['Billing State/Province'] + ',' + result[j]['Billing Zip/Postal Code'] ;
+				}	
+
+				logString += '"';
+	
+				console.log(logString );
+			}
+			else
+			{
+				console.log('FOUND,"'  +  starFinNo  +'","' + accountName +  ',' + billingStreet + ',' + city + ',' + state + ',' + zip +  '","' + result[0]['Account ID'] + ',' + result[0]['StarFin Account Number']  + ',' + result[0]['Account Name'] + ',' + result[0]['Billing Street'] + ',' + result[0]['Billing City'] + ',' + result[0]['Billing State/Province'] + ',' + result[0]['Billing Zip/Postal Code']+'"');
+							
+						/*	db.collection('Starfin').updateOne(
+							  { "NAME" : result[0]['Account Name']}
+							  ,
+							  { $set: { "Salesforce Account ID": result[0]['Account ID'] , "Account Type" : 'Update'} },
+							  
+							  function(err, results) 
+							  {
+								  if(!err)
+									console.log( "Account Name : "  + result[0]['NAME'] + " Billing Street : " + result[0]['ADDRESS_1'] + ' updated successfully with Starfin Account No ' + result[0]['ACCOUNT_NUMBER']);
+								
+							   }
+							  );		*/			   
+			}				
+		} 
+		else if(result.length == 0)
+		{
+			console.log('NOT FOUND,"'  + starFinNo  + '","' + accountName + ','  + billingStreet+ ',' + city + ',' + state + ',' + zip + '"');
+		}	
+							
+	});
+}
+
+var findAccountsInStarfindAcctNameMatch = function(db,documentArray)
+{
+	for(var i = 0 ; i < documentArray.length ; i++)
+	{				
+		var accountName = documentArray[i]['NAME'];
+		var billingStreet = documentArray[i]['ADDRESS_1'];
+		var city = documentArray[i]['CITY'];
+		var state = documentArray[i]['STATE'];
+		var zip = documentArray[i]['ZIP'];
+		var starFinNo = documentArray[i]['ENT_ACCT#'];
+		
+		if(accountName && billingStreet)
+		{
+			var cursor = db.collection('salesforceaccounts').find({ 'Account Name' :  accountName 
+																	});
+			
+			searchInSalesforce(accountName,billingStreet,city,state,zip,starFinNo,cursor);
+		}
+		else
+		{
+			console.log('INVALID ACCOUNT,"' + starFinNo  + '","'  + accountName +  ',' + billingStreet + ',' + city + ',' + state + ',' + zip + '"');
+		}
+	}	
+};
+
+var findAccountsInStarfindBillingAddrMatch = function(db,documentArray)
+{
+	for(var i = 0 ; i < documentArray.length ; i++)
+	{				
+		var accountName = documentArray[i]['NAME'];
+		var billingStreet = documentArray[i]['ADDRESS_1'];
+		var city = documentArray[i]['CITY'];
+		var state = documentArray[i]['STATE'];
+		var zip = documentArray[i]['ZIP'];
+		var starFinNo = documentArray[i]['ENT_ACCT#'];
+		
+		if(accountName && billingStreet)
+		{
+			var cursor = db.collection('salesforceaccounts').find({'Billing Street' : billingStreet,
+																   'Billing City' : city,
+																   'Billing State/Province' : state,
+																   'Billing Zip/Postal Code':zip
+																	});
+			
+			searchInSalesforce(accountName,billingStreet,city,state,zip,starFinNo,cursor);
+		}
+		else
+		{
+			console.log('INVALID ACCOUNT,"' + starFinNo  + '","'  + accountName +  ',' + billingStreet + ',' + city + ',' + state + ',' + zip + '"');
+		}
+	}	
+};
+
+var findAccountsInStarfindAcctBillingAddrMatch = function(db,documentArray)
+{
+	for(var i = 0 ; i < documentArray.length ; i++)
+	{				
+		var accountName = documentArray[i]['NAME'];
+		var billingStreet = documentArray[i]['ADDRESS_1'];
+		var city = documentArray[i]['CITY'];
+		var state = documentArray[i]['STATE'];
+		var zip = documentArray[i]['ZIP'];
+		var starFinNo = documentArray[i]['ENT_ACCT#'];
+		
+		if(accountName && billingStreet)
+		{
+			var cursor = db.collection('salesforceaccounts').find({ 'Account Name' :  accountName  ,
+																	'Billing Street' : billingStreet,
+																	'Billing City' : city,
+																	'Billing State/Province' : state,
+																	'Billing Zip/Postal Code':zip
+																	});
+			
+			searchInSalesforce(accountName,billingStreet,city,state,zip,starFinNo,cursor);
+		}
+		else
+		{
+			console.log('INVALID ACCOUNT,"' + starFinNo  + '","'  + accountName +  ',' + billingStreet + ',' + city + ',' + state + ',' + zip + '"');
+		}
+	}	
+};
+
+var findDuplicatesInStarfin = function(db)
+{
+	var cursor = db.collection(tableName).aggregate([
+				{$group: { _id: { firstField: "$NAME", secondField: "$ADDRESS_1",thirdField : "$CITY",fourthField : "$STATE" , fifthField :"$ZIP" ,sixthField:"$ADDRESS_2"}, StarFinAccountNos: { $addToSet: "$ENT_ACCT#" },count: { $sum:1 } }}, 
+				{$match: {  count: { $gt: 1 }}} ,
+				{$project:{"NAME" : "$_id.firstField","ADDRESS_1" : "$_id.secondField", "ADDRESS_2" : "$_id.sixthField","CITY" : "$_id.thirdField","STATE" : "$_id.fourthField" ,"ZIP" : "$_id.fifthField","_id" : 1,"StarFinAccountNos" : 1, "count":1}}]);
+	 
+   cursor.toArray(function (err, result)  
+   {  		
+		assert.equal(err, null);
+
+		if (err)
+		{
+			console.log(err);
+		} 
+		else if (result.length) 
+		{			
+			db.collection('StarfinDuplicates').insert(result);
+		}
+		else 
+		{
+			console.log('No document(s) found with defined "find" criteria!');
+		}
+	  
+   });	
+};

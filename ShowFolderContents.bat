@@ -1,0 +1,1 @@
+for /r %%i in (*) do mongoimport --db users --collection salesforceaccounts --type csv --headerline --file "%%i"

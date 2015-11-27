@@ -1,0 +1,22 @@
+db.Starfin.aggregate([
+{$group:{"_id":"$name","name":{$first:"$name"},"count":{$sum:1}}},
+{$match:{"count":{$gt:1}}},
+{$project:{"name":1,"_id":0}},
+{$group:{"_id":null,"duplicateNames":{$push:"$name"}}},
+{$project:{"_id":0,"duplicateNames":1}}
+])
+
+db.collection.aggregate([
+  { $group: { 
+    _id: { firstField: "$firstField", secondField: "$secondField" }, 
+    uniqueIds: { $addToSet: "$_id" },
+    count: { $sum: 1 } 
+  }}, 
+  { $match: { 
+    count: { $gt: 1 } 
+  }}
+])
+
+db.Starfin.aggregate([   { $group: {      _id: { firstField: "$NAME", secondField: "$ADDRESS_1" },      count: { $sum:1 }    }},    { $match: {      count: { $gt: 1 }    }} ,{$project:{"_id":1,"count":1}}])
+
+C:\Users\abansal\Documents\Newsday\Data Mapping>mongoexport --db users --collection StarfinDuplicates --type=csv --fields NAME,CITY,STATE,ZIP,"Street Address" --out StarfinDuplicates.csv
