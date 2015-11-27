@@ -105,7 +105,7 @@ var findAccountsInAdbasedAcctNameMatch = function(db)
 		} 
 		else if (documentArray.length) 
 		{
-			totalNumberOfDocsToProcess = documentArray.length * 3 ;
+			totalNumberOfDocsToProcess += documentArray.length ;
 			
 			for(var i = 0 ; i < documentArray.length ; i++)
 				{				
@@ -169,7 +169,7 @@ var findAccountsInAdbasedBillingAddrMatch = function(db)
 		} 
 		else if (documentArray.length) 
 		{	
-			totalNumberOfDocsToProcess = documentArray.length * 3 ;
+			totalNumberOfDocsToProcess += documentArray.length ;
 			
 			for(var i = 0 ; i < documentArray.length ; i++)
 			{				
@@ -234,7 +234,7 @@ var findAccountsInAdbasedAcctBillingAddrMatch = function(db)
 		} 
 		else if (documentArray.length) 
 		{
-			totalNumberOfDocsToProcess = documentArray.length * 3 ;			
+			totalNumberOfDocsToProcess += documentArray.length;			
 			
 			for(var i = 0 ; i < documentArray.length ; i++)
 			{				
